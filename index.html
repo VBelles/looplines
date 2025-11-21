@@ -228,77 +228,182 @@ const sound = {
 
 // --- Level Data ---
 const levels = [
-    // 1: Basic straight line
+    // 1: Tight Spiral Trap
     {
         id: 1,
-        size: 4,
+        size: 5,
         start: [0, 0],
-        end: [0, 3],
-        required: [[0, 1], [0, 2]],
-        layout: "empty" 
+        end: [4, 4],
+        required: [
+            [0, 4], [4, 0],  // force perimeter run
+            [1, 1], [1, 3], [3, 1], [3, 3], // internal choke points
+            [2, 2] // center pivot
+        ]
     },
-    // 2: Corner turn
+
+    // 2: Double Figure-8
     {
         id: 2,
-        size: 4,
-        start: [0, 0],
-        end: [3, 3],
-        required: [[0, 3], [3, 0]],
-        layout: "empty"
+        size: 5,
+        start: [2, 0],
+        end: [2, 4],
+        required: [
+            [0, 2], [4, 2],   // horizontal gates
+            [1, 1], [1, 3],   // upper loop
+            [3, 1], [3, 3],   // lower loop
+            [2, 2],           // unavoidable center cross
+        ]
     },
-    // 3: Snake
+
+    // 3: The No-Return Corridor
     {
         id: 3,
-        size: 5,
-        start: [2, 2],
-        end: [0, 2],
-        required: [[2, 4], [4, 4], [4, 0], [0, 0]],
-        layout: "empty"
+        size: 6,
+        start: [0, 3],
+        end: [5, 3],
+        required: [
+            [0, 0], [0, 5],
+            [1, 2], [1, 3],
+            [2, 1], [2, 4],
+            [3, 1], [3, 4],
+            [4, 2], [4, 3],
+            [5, 0], [5, 5]
+        ]
     },
-    // 4: The Loop (almost)
+
+    // 4: Central Gridlock
     {
         id: 4,
         size: 5,
-        start: [0, 2],
-        end: [2, 2],
-        required: [[1, 1], [1, 3], [3, 1], [3, 3]],
-        layout: "empty"
+        start: [2, 2],
+        end: [4, 4],
+        required: [
+            // form a forced maze inside the center
+            [1, 2], [3, 2],
+            [2, 1], [2, 3],
+            [1, 1], [1, 3],
+            [3, 1], [3, 3],
+            // perimeter anchors
+            [0, 0], [0, 4], [4, 0]
+        ]
     },
-    // 5: Diagonal denial (forces cardinal movement concept)
+
+    // 5: The Hourglass
     {
         id: 5,
-        size: 6,
-        start: [0, 0],
-        end: [5, 5],
-        required: [[0, 5], [5, 0], [2, 2], [3, 3]],
-        layout: "empty"
+        size: 7,
+        start: [3, 0],
+        end: [3, 6],
+        required: [
+            // hourglass waist
+            [3, 2], [3, 4],
+            [2, 3], [4, 3],
+
+            // upper diamond
+            [1, 1], [1, 5],
+            [2, 2], [4, 2],
+
+            // lower diamond
+            [2, 4], [4, 4],
+            [5, 1], [5, 5],
+
+            // anti-shortcut guards
+            [0, 3], [6, 3]
+        ]
     },
-    // 6: Full coverage
+
+    // 6: The Guillotine
     {
         id: 6,
-        size: 4,
-        start: [0, 0],
-        end: [0, 1],
-        required: [[3, 3], [3, 0]], // Forces a long path
-        layout: "empty"
+        size: 6,
+        start: [0, 2],
+        end: [5, 2],
+        required: [
+            [1,1], [1,2], [1,3],   // mid-line choke
+            [4,1], [4,2], [4,3],   // mirrored choke
+            [2,0], [3,0],
+            [2,5], [3,5],
+            [2,2], [3,2]
+        ]
     },
-    // 7: Zig Zag
+
+    // 7: Triple Spiral
     {
         id: 7,
-        size: 6,
-        start: [1, 0],
-        end: [4, 5],
-        required: [[1, 5], [2, 1], [3, 4], [4, 1]],
-        layout: "empty"
+        size: 7,
+        start: [0, 0],
+        end: [6, 6],
+        required: [
+            // outer square
+            [0,6], [6,6], [6,0],
+
+            // second ring
+            [1,5], [5,5], [5,1], [1,1],
+
+            // third ring
+            [2,4], [4,4], [4,2], [2,2],
+
+            // core pivot
+            [3,3]
+        ]
     },
-    // 8: The Box
+
+    // 8: The Cross Knot
     {
         id: 8,
+        size: 5,
+        start: [0,2],
+        end: [4,2],
+        required: [
+            // vertical spine
+            [1,2], [2,2], [3,2],
+
+            // horizontal choke points
+            [2,1], [2,3],
+
+            // diagonals forcing re-entry
+            [1,1], [1,3],
+            [3,1], [3,3],
+
+            // perimeter traps
+            [0,0], [0,4], [4,0], [4,4]
+        ]
+    },
+
+    // 9: Perfect Symmetry Trap
+    {
+        id: 9,
         size: 6,
-        start: [2, 2],
-        end: [3, 3],
-        required: [[1, 1], [1, 4], [4, 4], [4, 1]],
-        layout: "empty"
+        start: [0,3],
+        end: [5,3],
+        required: [
+            // symmetry constraints
+            [1,1], [1,4],
+            [2,2], [2,3],
+            [3,2], [3,3],
+            [4,1], [4,4],
+
+            // anti-shortcut
+            [0,0], [0,5], [5,0], [5,5]
+        ]
+    },
+
+    // 10: The Funnel
+    {
+        id: 10,
+        size: 5,
+        start: [2,0],
+        end: [2,4],
+        required: [
+            // funnel shape
+            [1,1], [3,1],
+            [0,2],
+            [1,3], [3,3],
+            [4,2],
+
+            // internal lock
+            [2,2]
+        ]
     }
 ];
 
@@ -308,6 +413,7 @@ const app = {
     maxUnlockedLevel: 1,
     currentLevelIndex: 0,
     audioEnabled: true,
+    debugMode: false, // Set to true in console to unlock all levels: app.debugMode = true; app.renderLevelSelect();
 
     init() {
         // Load save data
@@ -438,7 +544,8 @@ const app = {
         grid.innerHTML = '';
         levels.forEach((lvl, idx) => {
             const btn = document.createElement('button');
-            const isLocked = (idx + 1) > this.maxUnlockedLevel;
+            // Check debug mode or normal unlock progress
+            const isLocked = !this.debugMode && ((idx + 1) > this.maxUnlockedLevel);
             
             btn.className = `aspect-square rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg transition-all transform active:scale-95 
                 ${isLocked 
@@ -535,6 +642,10 @@ const game = {
     buildGridDOM() {
         const domGrid = document.getElementById('grid-dom');
         domGrid.innerHTML = '';
+        
+        // Dynamic Gap: Use tighter gap for large grids (7+) to preserve touch target size
+        const gapClass = this.level.size > 6 ? 'gap-1' : 'gap-2';
+        domGrid.className = `grid ${gapClass} relative z-0`;
         
         // CSS Grid styling
         domGrid.style.gridTemplateColumns = `repeat(${this.level.size}, 1fr)`;
