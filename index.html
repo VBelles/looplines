@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LoopLines</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Animations */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); transform: scale(1); }
+            50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.8); transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        @keyframes pop-success {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animate-shake {
+            animation: shake 0.4s;
+            animation-iteration-count: 1;
+        }
+
+        .animate-pop {
+            animation: pop-success 0.3s ease-out;
+        }
+
+        /* Grid Cell Styling */
+        .cell {
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        
+        /* Hide scrollbar */
+        body {
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+
+        /* Neon Glow Effects */
+        .glow-text {
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white font-sans h-screen w-screen overflow-hidden select-none flex flex-col">
+
+    <!-- AUDIO (Simple synthesized sounds via JS, no external files) -->
+
+    <!-- === SCREEN: HOME === -->
+    <div id="home-screen" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900 transition-opacity duration-300">
+        <!-- Audio Toggle -->
+        <!-- Fixed: Changed top-6 to top-5 and p-3 to p-2 to match Game Screen header alignment exactly -->
+        <button onclick="app.toggleAudio()" class="btn-audio absolute top-5 right-6 p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors z-50">
+            <!-- Icon injected by JS -->
+        </button>
+
+        <div class="mb-12 relative">
+            <div class="absolute -inset-4 bg-indigo-500 rounded-full opacity-20 blur-xl animate-pulse"></div>
+            <h1 class="text-5xl font-bold tracking-tighter glow-text relative z-10">LoopLines</h1>
+        </div>
+        
+        <button onclick="app.showLevelSelect()" class="w-64 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl text-xl font-semibold shadow-lg shadow-indigo-500/30 mb-6 transition-all transform hover:scale-105 active:scale-95">
+            Play
+        </button>
+        
+        <!-- Removed Daily & Themes Buttons -->
+    </div>
+
+    <!-- === SCREEN: LEVELS === -->
+    <div id="level-screen" class="absolute inset-0 z-10 flex flex-col bg-slate-900 hidden opacity-0 transition-opacity duration-300">
+        <div class="p-6 flex items-center">
+            <button onclick="app.showHome()" class="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            </button>
+            <h2 class="text-2xl font-bold ml-4">Select Level</h2>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-6 pt-0">
+            <div id="level-grid" class="grid grid-cols-4 gap-4">
+                <!-- Levels injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- === SCREEN: GAME === -->
+    <div id="game-screen" class="absolute inset-0 z-0 flex flex-col hidden">
+        
+        <!-- Top Bar -->
+        <div class="h-20 flex items-center justify-between px-6 bg-slate-900/90 backdrop-blur-sm z-10">
+            <button onclick="app.showLevelSelect()" class="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            </button>
+            
+            <div class="flex flex-col items-center">
+                <span class="text-xs text-slate-500 uppercase tracking-widest font-bold">Level</span>
+                <span id="level-indicator" class="text-xl font-bold text-white">1</span>
+            </div>
+            
+            <!-- Audio Toggle (Game Screen) -->
+            <button onclick="app.toggleAudio()" class="btn-audio p-2 rounded-full hover:bg-slate-800 text-indigo-400 hover:text-indigo-300 transition-colors">
+                 <!-- Icon injected by JS -->
+            </button>
+        </div>
+
+        <!-- Game Area -->
+        <div class="flex-1 flex items-center justify-center relative overflow-hidden bg-slate-900" id="game-container">
+            
+            <!-- Message Overlay -->
+            <div id="message-overlay" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/80 pointer-events-none opacity-0 transition-opacity duration-300">
+                <div class="bg-indigo-600 text-white px-8 py-4 rounded-2xl shadow-2xl transform scale-0 transition-transform duration-300" id="message-box">
+                    <h3 class="text-2xl font-bold text-center">Perfect!</h3>
+                </div>
+            </div>
+
+            <!-- The Grid Wrapper -->
+            <div id="grid-wrapper" class="relative bg-slate-800 rounded-3xl shadow-2xl p-4 transition-transform">
+                <!-- HTML Grid (Background/Tiles) -->
+                <div id="grid-dom" class="grid gap-2 relative z-0"></div>
+                
+                <!-- Canvas (Foreground/Line Drawing) -->
+                <canvas id="game-canvas" class="absolute top-0 left-0 z-10 pointer-events-none"></canvas>
+                
+                <!-- Touch Layer (Invisible, catches input) -->
+                <div id="touch-layer" class="absolute inset-0 z-20 cursor-crosshair touch-none"></div>
+            </div>
+
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="h-24 bg-slate-900 flex items-center justify-center space-x-8 pb-4">
+            <button onclick="game.resetLevel()" class="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-all shadow-lg active:scale-95">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></svg>
+            </button>
+        </div>
+
+    </div>
+
+<script>
+// --- Sound Engine (Web Audio API) ---
+const sound = {
+    ctx: null,
+    
+    init() {
+        if (this.ctx) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+    },
+
+    resume() {
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    },
+
+    play(type, param = 0) {
+        if (!app.audioEnabled) return;
+        if (!this.ctx) this.init();
+        this.resume();
+
+        const t = this.ctx.currentTime;
+        
+        switch (type) {
+            case 'start': // Touching the start node
+                this.tone(440, 'sine', 0.1, t, 0.1);
+                break;
+                
+            case 'move': // Moving to a new tile
+                // Pitch rises with path length (param)
+                // Base 300Hz + 30Hz per step
+                const pitch = 300 + (param * 40); 
+                this.tone(pitch, 'sine', 0.08, t, 0.08);
+                break;
+                
+            case 'invalid': // Hitting wall/self
+                this.tone(150, 'sawtooth', 0.15, t, 0.08);
+                this.tone(145, 'sawtooth', 0.15, t, 0.08); // Dissonance
+                break;
+                
+            case 'success': // Level complete
+                // C Major Arpeggio
+                this.tone(523.25, 'sine', 0.4, t, 0.1);       // C5
+                this.tone(659.25, 'sine', 0.4, t + 0.08, 0.1); // E5
+                this.tone(783.99, 'sine', 0.6, t + 0.16, 0.1); // G5
+                this.tone(1046.50, 'sine', 0.8, t + 0.24, 0.05); // C6
+                break;
+                
+            case 'ui': // Button clicks
+                this.tone(800, 'triangle', 0.05, t, 0.05);
+                break;
+        }
+    },
+
+    tone(freq, type, duration, time, vol = 0.1) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        // Envelope to avoid clicking
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(vol, time + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+        
+        osc.start(time);
+        osc.stop(time + duration);
+    }
+};
+
+// --- Level Data ---
+const levels = [
+    // 1: Basic straight line
+    {
+        id: 1,
+        size: 4,
+        start: [0, 0],
+        end: [0, 3],
+        required: [[0, 1], [0, 2]],
+        layout: "empty" 
+    },
+    // 2: Corner turn
+    {
+        id: 2,
+        size: 4,
+        start: [0, 0],
+        end: [3, 3],
+        required: [[0, 3], [3, 0]],
+        layout: "empty"
+    },
+    // 3: Snake
+    {
+        id: 3,
+        size: 5,
+        start: [2, 2],
+        end: [0, 2],
+        required: [[2, 4], [4, 4], [4, 0], [0, 0]],
+        layout: "empty"
+    },
+    // 4: The Loop (almost)
+    {
+        id: 4,
+        size: 5,
+        start: [0, 2],
+        end: [2, 2],
+        required: [[1, 1], [1, 3], [3, 1], [3, 3]],
+        layout: "empty"
+    },
+    // 5: Diagonal denial (forces cardinal movement concept)
+    {
+        id: 5,
+        size: 6,
+        start: [0, 0],
+        end: [5, 5],
+        required: [[0, 5], [5, 0], [2, 2], [3, 3]],
+        layout: "empty"
+    },
+    // 6: Full coverage
+    {
+        id: 6,
+        size: 4,
+        start: [0, 0],
+        end: [0, 1],
+        required: [[3, 3], [3, 0]], // Forces a long path
+        layout: "empty"
+    },
+    // 7: Zig Zag
+    {
+        id: 7,
+        size: 6,
+        start: [1, 0],
+        end: [4, 5],
+        required: [[1, 5], [2, 1], [3, 4], [4, 1]],
+        layout: "empty"
+    },
+    // 8: The Box
+    {
+        id: 8,
+        size: 6,
+        start: [2, 2],
+        end: [3, 3],
+        required: [[1, 1], [1, 4], [4, 4], [4, 1]],
+        layout: "empty"
+    }
+];
+
+// --- Application State Management ---
+const app = {
+    currentScreen: 'home',
+    maxUnlockedLevel: 1,
+    currentLevelIndex: 0,
+    audioEnabled: true,
+
+    init() {
+        // Load save data
+        const saved = localStorage.getItem('looplines_save');
+        if (saved) {
+            this.maxUnlockedLevel = parseInt(saved);
+        }
+        
+        // Init Audio UI
+        this.updateAudioUI();
+        this.renderLevelSelect();
+    },
+
+    toggleAudio() {
+        this.audioEnabled = !this.audioEnabled;
+        this.updateAudioUI();
+        
+        // Initialize audio context on first user interaction
+        if (this.audioEnabled) {
+            sound.init();
+            sound.play('ui');
+        }
+    },
+
+    updateAudioUI() {
+        const btns = document.querySelectorAll('.btn-audio');
+        const iconOn = `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+        const iconOff = `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`;
+
+        btns.forEach(btn => {
+            btn.innerHTML = this.audioEnabled ? iconOn : iconOff;
+            
+            // Fix: Don't overwrite className completely, just toggle specific state classes
+            // Base classes like 'btn-audio', 'p-2', 'rounded-full' are now static in HTML
+            
+            if (this.audioEnabled) {
+                btn.classList.remove('text-slate-600');
+                btn.classList.add('text-indigo-400');
+            } else {
+                btn.classList.remove('text-indigo-400');
+                btn.classList.add('text-slate-600');
+            }
+            
+            // Ensure hover effect exists (static in HTML usually, but ensuring consistency)
+            btn.classList.add('hover:bg-slate-800', 'transition-colors');
+        });
+    },
+
+    saveProgress() {
+        localStorage.setItem('looplines_save', this.maxUnlockedLevel);
+    },
+
+    switchScreen(screenId) {
+        document.getElementById('home-screen').classList.add('hidden');
+        document.getElementById('level-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.add('hidden');
+        
+        // Hide logic
+        document.getElementById('home-screen').style.opacity = 0;
+        document.getElementById('level-screen').style.opacity = 0;
+
+        const target = document.getElementById(screenId);
+        target.classList.remove('hidden');
+        
+        // Small timeout for fade-in
+        setTimeout(() => {
+            target.style.opacity = 1;
+        }, 10);
+    },
+
+    showHome() {
+        this.switchScreen('home-screen');
+    },
+
+    showLevelSelect() {
+        this.renderLevelSelect();
+        this.switchScreen('level-screen');
+    },
+
+    startLevel(index) {
+        this.currentLevelIndex = index;
+        this.switchScreen('game-screen');
+        
+        // Fix: Defer level load slightly to ensure the game screen 
+        // has a valid layout/width before we calculate grid sizes.
+        requestAnimationFrame(() => {
+            game.loadLevel(levels[index]);
+        });
+    },
+
+    startDaily() {
+        // Just load a random level for now
+        const idx = Math.floor(Math.random() * levels.length);
+        this.startLevel(idx);
+    },
+
+    levelComplete() {
+        if (this.currentLevelIndex + 1 === this.maxUnlockedLevel) {
+            this.maxUnlockedLevel++;
+            this.saveProgress();
+        }
+        
+        // Show success message
+        const overlay = document.getElementById('message-overlay');
+        const msgBox = document.getElementById('message-box');
+        
+        overlay.classList.remove('opacity-0');
+        msgBox.classList.remove('scale-0');
+        msgBox.classList.add('scale-100');
+
+        setTimeout(() => {
+            // Hide success
+            overlay.classList.add('opacity-0');
+            msgBox.classList.remove('scale-100');
+            msgBox.classList.add('scale-0');
+
+            // Next level
+            if (this.currentLevelIndex < levels.length - 1) {
+                this.startLevel(this.currentLevelIndex + 1);
+            } else {
+                this.showLevelSelect(); // Finished all levels
+            }
+        }, 1200);
+    },
+
+    renderLevelSelect() {
+        const grid = document.getElementById('level-grid');
+        grid.innerHTML = '';
+        levels.forEach((lvl, idx) => {
+            const btn = document.createElement('button');
+            const isLocked = (idx + 1) > this.maxUnlockedLevel;
+            
+            btn.className = `aspect-square rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg transition-all transform active:scale-95 
+                ${isLocked 
+                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed' 
+                    : 'bg-indigo-600 text-white hover:bg-indigo-500 hover:scale-105'}`;
+            
+            btn.innerText = idx + 1;
+            if (!isLocked) {
+                btn.onclick = () => this.startLevel(idx);
+            } else {
+                btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" transform="translate(-3 -4)"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+            }
+            grid.appendChild(btn);
+        });
+    }
+};
+
+// --- Game Engine ---
+const game = {
+    level: null,
+    path: [], // Array of {r, c} objects
+    isDrawing: false,
+    cellSize: 0,
+    canvas: null,
+    ctx: null,
+    wrapper: null,
+    touchLayer: null,
+    
+    init() {
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.wrapper = document.getElementById('grid-wrapper');
+        this.touchLayer = document.getElementById('touch-layer');
+        
+        // Event Listeners
+        const touchLayer = this.touchLayer;
+        
+        // Mouse
+        touchLayer.addEventListener('mousedown', (e) => {
+            sound.resume(); // Ensure audio context is awake
+            this.handleStart(e.clientX, e.clientY);
+        });
+        window.addEventListener('mousemove', (e) => this.handleMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', () => this.handleEnd());
+        
+        // Touch
+        touchLayer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            sound.resume(); // Ensure audio context is awake
+            this.handleStart(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+        
+        window.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            this.handleMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+        
+        window.addEventListener('touchend', () => this.handleEnd());
+        
+        // Resize handler
+        window.addEventListener('resize', () => {
+            if(!document.getElementById('game-screen').classList.contains('hidden')) {
+                this.resizeGrid();
+                this.renderPath();
+            }
+        });
+    },
+
+    loadLevel(levelData) {
+        this.level = levelData;
+        this.path = [];
+        this.isDrawing = false;
+        
+        document.getElementById('level-indicator').innerText = this.level.id;
+        
+        this.buildGridDOM();
+        this.resizeGrid(); // Calculates sizes and sets canvas resolution
+    },
+
+    resetLevel() {
+        sound.play('ui'); // Sound on reset
+        this.path = [];
+        this.isDrawing = false;
+        this.updateTiles();
+        this.renderPath();
+        
+        // Shake animation on reset button press
+        const grid = document.getElementById('grid-wrapper');
+        grid.classList.remove('animate-shake');
+        void grid.offsetWidth; // trigger reflow
+        grid.classList.add('animate-shake');
+    },
+
+    buildGridDOM() {
+        const domGrid = document.getElementById('grid-dom');
+        domGrid.innerHTML = '';
+        
+        // CSS Grid styling
+        domGrid.style.gridTemplateColumns = `repeat(${this.level.size}, 1fr)`;
+        
+        for (let r = 0; r < this.level.size; r++) {
+            for (let c = 0; c < this.level.size; c++) {
+                const cell = document.createElement('div');
+                cell.id = `cell-${r}-${c}`;
+                
+                // Base style
+                let classes = "aspect-square rounded-xl bg-slate-700/50 transition-all duration-200 border-2 border-transparent flex items-center justify-center relative";
+                
+                // Content logic
+                let content = '';
+                
+                // Check for special tiles
+                const isStart = (r === this.level.start[0] && c === this.level.start[1]);
+                const isEnd = (r === this.level.end[0] && c === this.level.end[1]);
+                const isReq = this.level.required.some(p => p[0] === r && p[1] === c);
+
+                if (isStart) {
+                    classes += " border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.3)]";
+                    content = `<div class="w-3 h-3 bg-indigo-400 rounded-full animate-pulse"></div>`;
+                } else if (isEnd) {
+                    classes += " border-emerald-500";
+                    content = `<div class="w-3 h-3 bg-emerald-500 rounded-full"></div>`;
+                } else if (isReq) {
+                    content = `<div class="w-2 h-2 bg-slate-500/50 rounded-full ring-2 ring-slate-600"></div>`;
+                } else {
+                    content = `<div class="w-1 h-1 bg-slate-600/30 rounded-full"></div>`;
+                }
+
+                cell.className = classes;
+                cell.innerHTML = content;
+                domGrid.appendChild(cell);
+            }
+        }
+    },
+
+    resizeGrid() {
+        const container = document.getElementById('game-container');
+        
+        // Fix: Safety check. If container is hidden (width 0), 
+        // wait and retry instead of creating a 0x0 canvas.
+        if (!container || container.clientWidth === 0) {
+            requestAnimationFrame(() => this.resizeGrid());
+            return;
+        }
+
+        const size = Math.min(container.clientWidth - 40, container.clientHeight - 40, 500); // Max 500px
+        
+        this.wrapper.style.width = `${size}px`;
+        this.wrapper.style.height = `${size}px`;
+        
+        // Update cell size for calculation
+        // 16px gap in total (gap-2 = 0.5rem = 8px). Actually tailwind gap-2 is 0.5rem.
+        // We need precise math. Let's use getBoundingClientRect of a cell.
+        const firstCell = document.getElementById('cell-0-0');
+        if (firstCell) {
+            this.cellSize = firstCell.getBoundingClientRect().width;
+        }
+        
+        // Canvas Size
+        const rect = this.wrapper.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+        
+        this.renderPath(); // Re-render line if resized
+    },
+
+    // --- Input Logic ---
+
+    getGridCoord(x, y) {
+        const rect = document.getElementById('grid-dom').getBoundingClientRect();
+        
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+            return null;
+        }
+
+        // Calculate relative pos
+        const relX = x - rect.left;
+        const relY = y - rect.top;
+        
+        // We need to account for gaps. 
+        // Grid is size x size. 
+        const cellTotalSize = rect.width / this.level.size;
+        
+        const c = Math.floor(relX / cellTotalSize);
+        const r = Math.floor(relY / cellTotalSize);
+        
+        // Clamp just in case
+        if (r < 0 || r >= this.level.size || c < 0 || c >= this.level.size) return null;
+        
+        return { r, c };
+    },
+
+    handleStart(x, y) {
+        const coord = this.getGridCoord(x, y);
+        if (!coord) return;
+
+        // Must start on Start Tile
+        if (coord.r === this.level.start[0] && coord.c === this.level.start[1]) {
+            this.isDrawing = true;
+            this.path = [coord];
+            this.updateTiles();
+            this.renderPath();
+            
+            // Feedback
+            if(navigator.vibrate) navigator.vibrate(5);
+            sound.play('start'); // Sound
+        }
+    },
+
+    handleMove(x, y) {
+        if (!this.isDrawing) return;
+
+        const coord = this.getGridCoord(x, y);
+        if (!coord) return;
+
+        const last = this.path[this.path.length - 1];
+        
+        // If hovering over same tile, ignore
+        if (coord.r === last.r && coord.c === last.c) return;
+
+        // Logic:
+        // 1. Is it a neighbor? (Cardinal only)
+        const dr = Math.abs(coord.r - last.r);
+        const dc = Math.abs(coord.c - last.c);
+        const isNeighbor = (dr + dc === 1);
+
+        if (isNeighbor) {
+            // 2. Is it already in path? (Backtracking check)
+            const indexInPath = this.path.findIndex(p => p.r === coord.r && p.c === coord.c);
+            
+            if (indexInPath !== -1) {
+                // STRICT MODE: No backtracking allowed.
+                this.triggerInvalidFeedback();
+            } else {
+                // New valid tile
+                this.path.push(coord);
+                this.updateTiles();
+                this.renderPath();
+                
+                // Feedback
+                if(navigator.vibrate) navigator.vibrate(5);
+                sound.play('move', this.path.length); // Sound with pitch scaling
+
+                // Auto-complete check: If we hit the end tile, validate immediately
+                if (coord.r === this.level.end[0] && coord.c === this.level.end[1]) {
+                    this.handleEnd();
+                }
+            }
+        } else {
+            // Not a neighbor (diagonal or jump) - Invalid
+        }
+    },
+
+    // Added helper for invalid moves (diagonal or self-cross)
+    triggerInvalidFeedback() {
+        const grid = document.getElementById('grid-wrapper');
+        if (!grid.classList.contains('animate-shake')) {
+            grid.classList.add('animate-shake');
+            setTimeout(() => grid.classList.remove('animate-shake'), 400);
+            if(navigator.vibrate) navigator.vibrate(50);
+            sound.play('invalid'); // Sound
+        }
+    },
+
+    handleEnd() {
+        if (!this.isDrawing) return;
+        this.isDrawing = false;
+        
+        const last = this.path[this.path.length - 1];
+        
+        // Validation
+        // 1. Ends on End Tile?
+        const isAtEnd = (last.r === this.level.end[0] && last.c === this.level.end[1]);
+        
+        // 2. Hits all Required Tiles?
+        const hitReqs = this.level.required.every(req => {
+            return this.path.some(p => p.r === req[0] && p.c === req[1]);
+        });
+
+        if (isAtEnd && hitReqs) {
+            // SUCCESS
+            this.animateSuccess();
+        } else {
+            // FAIL
+            this.animateFail();
+        }
+    },
+
+    // --- Rendering ---
+
+    updateTiles() {
+        // Clear previous active states
+        document.querySelectorAll('.cell').forEach(el => {
+            el.classList.remove('bg-slate-600', 'scale-95');
+            if(!el.innerHTML.includes('bg-indigo-400') && !el.innerHTML.includes('bg-emerald-500')) {
+                // Reset empty cells
+            }
+        });
+
+        // Highlight path
+        this.path.forEach(p => {
+            const el = document.getElementById(`cell-${p.r}-${p.c}`);
+            if (el) {
+                el.classList.add('scale-95'); // Subtle press effect
+            }
+        });
+    },
+
+    renderPath() {
+        const ctx = this.ctx;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        
+        ctx.clearRect(0, 0, w, h);
+        
+        if (this.path.length < 1) return;
+
+        // Style
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = this.cellSize * 0.3;
+        ctx.strokeStyle = '#6366f1'; // Indigo 500
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#6366f1';
+
+        // Logic to find center of cells
+        const getCenter = (r, c) => {
+            const el = document.getElementById(`cell-${r}-${c}`);
+            if (!el) return {x:0, y:0};
+            const rect = el.getBoundingClientRect();
+            const parentRect = this.wrapper.getBoundingClientRect();
+            return {
+                x: rect.left - parentRect.left + rect.width / 2,
+                y: rect.top - parentRect.top + rect.height / 2
+            };
+        };
+
+        ctx.beginPath();
+        const start = getCenter(this.path[0].r, this.path[0].c);
+        ctx.moveTo(start.x, start.y);
+
+        for (let i = 1; i < this.path.length; i++) {
+            const pt = getCenter(this.path[i].r, this.path[i].c);
+            ctx.lineTo(pt.x, pt.y);
+        }
+        
+        ctx.stroke();
+        
+        // Draw a "head" dot at the current finger position
+        const last = this.path[this.path.length-1];
+        const lastPt = getCenter(last.r, last.c);
+        ctx.fillStyle = '#fff';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#fff';
+        ctx.beginPath();
+        ctx.arc(lastPt.x, lastPt.y, this.cellSize * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+    },
+
+    animateSuccess() {
+        // Pulse line
+        this.ctx.strokeStyle = '#a5b4fc'; // lighter indigo
+        this.ctx.lineWidth = this.cellSize * 0.4;
+        this.ctx.stroke();
+        
+        sound.play('success'); // Sound
+        app.levelComplete();
+    },
+
+    animateFail() {
+        const grid = document.getElementById('grid-wrapper');
+        grid.classList.add('animate-shake');
+        sound.play('invalid'); // Sound
+        
+        // Red tint on last tile
+        const last = this.path[this.path.length - 1];
+        const el = document.getElementById(`cell-${last.r}-${last.c}`);
+        if(el) el.style.backgroundColor = 'rgba(239, 68, 68, 0.3)';
+
+        setTimeout(() => {
+            grid.classList.remove('animate-shake');
+            if(el) el.style.backgroundColor = '';
+            
+            // Reset path
+            this.path = [];
+            this.updateTiles();
+            this.renderPath();
+        }, 400);
+    }
+};
+
+// Initialize
+window.onload = () => {
+    app.init();
+    game.init();
+};
+
+</script>
+</body>
+</html>
